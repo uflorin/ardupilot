@@ -74,6 +74,15 @@ RPI_LD      :=  arm-linux-gnueabihf-g++
 RPI_GDB     :=  arm-linux-gnueabihf-gdb
 RPI_OBJCOPY :=  arm-linux-gnueabihf-obj
 
+# toolchains for Odroid-C1
+ODROID_C1_CXX     :=  arm-linux-gnueabihf-g++
+ODROID_C1_CC      :=  arm-linux-gnueabihf-gcc
+ODROID_C1_AS      :=  arm-linux-gnueabihf-gcc
+ODROID_C1_AR      :=  arm-linux-gnueabihf-ar
+ODROID_C1_LD      :=  arm-linux-gnueabihf-g++
+ODROID_C1_GDB     :=  arm-linux-gnueabihf-gdb
+ODROID_C1_OBJCOPY :=  arm-linux-gnueabihf-obj
+
 # toolchains for zynq
 ZYNQ_CXX     :=  arm-xilinx-linux-gnueabi-g++
 ZYNQ_CC      :=  arm-xilinx-linux-gnueabi-gcc
