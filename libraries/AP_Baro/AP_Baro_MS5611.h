@@ -6,7 +6,11 @@
 #include <AP_HAL.h>
 #include "AP_Baro.h"
 
+#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO || CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO_ODROID_C1
 #define MS5611_I2C_ADDR 0x77
+#else
+#define MS5611_I2C_ADDR 0x76
+#endif
 
 /** Abstract serial bus device driver for I2C/SPI. */
 class AP_SerialBus
