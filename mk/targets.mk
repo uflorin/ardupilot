@@ -45,9 +45,15 @@ navio: HAL_BOARD = HAL_BOARD_LINUX
 navio: TOOLCHAIN = RPI
 navio: all
 
+navio-odroidc1: HAL_BOARD = HAL_BOARD_LINUX
+navio-odroidc1: TOOLCHAIN = ODROID_C1
+navio-odroidc1: all
+
 bbbmini: HAL_BOARD = HAL_BOARD_LINUX
 bbbmini: TOOLCHAIN = BBONE
 bbbmini: all
+
+>>>>>>> build: Add navio-odroidc1 target
 
 empty: HAL_BOARD = HAL_BOARD_EMPTY
 empty: TOOLCHAIN = AVR
