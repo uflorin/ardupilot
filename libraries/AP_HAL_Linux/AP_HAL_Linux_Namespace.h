@@ -17,6 +17,7 @@ namespace Linux {
     class LinuxAnalogIn;
     class LinuxStorage;
     class LinuxGPIO_BBB;
+    class LinuxGPIO_ODROID_C1;
     class LinuxGPIO_RPI;
     class LinuxStorage;
     class LinuxStorage_FRAM;

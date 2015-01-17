@@ -51,8 +51,11 @@ static LinuxGPIO_BBB gpioDriver;
  */
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO
 static LinuxGPIO_RPI gpioDriver;
+/*
+  use the ODROID-C1 gpio driver on Navio + Odroid-C1
+ */
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO_ODROID_C1
-static Empty::EmptyGPIO gpioDriver;
+static LinuxGPIO_ODROID_C1 gpioDriver;
 #else
 static Empty::EmptyGPIO gpioDriver;
 #endif
