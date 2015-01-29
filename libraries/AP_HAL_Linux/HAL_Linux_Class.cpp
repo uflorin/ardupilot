@@ -86,7 +86,7 @@ static LinuxRCOutput_PRU rcoutDriver;
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO
 static LinuxRCOutput_Navio rcoutDriver;
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO_ODROID_C1
-static Empty::EmptyRCOutput rcoutDriver; // TODO
+static LinuxRCOutput_Navio rcoutDriver;
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_ZYNQ
 static LinuxRCOutput_ZYNQ rcoutDriver;
 #else
