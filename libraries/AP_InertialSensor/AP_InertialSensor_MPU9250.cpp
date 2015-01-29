@@ -283,7 +283,8 @@ bool AP_InertialSensor_MPU9250::update( void )
     // PXF has an additional YAW 180
     accel.rotate(ROTATION_YAW_180);
     gyro.rotate(ROTATION_YAW_180);
-#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO \
+   || CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO_ODROID_C1
     // NavIO has different orientation, assuming RaspberryPi is right
     // way up, and PWM pins on NavIO are at the back of the aircraft
     accel.rotate(ROTATION_ROLL_180_YAW_90);
