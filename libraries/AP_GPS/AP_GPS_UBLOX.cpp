@@ -38,8 +38,12 @@ extern const AP_HAL::HAL& hal;
   only do detailed hardware logging on boards likely to have more log
   storage space
  */
+#define NAVIO_RTK 1
 #if HAL_CPU_CLASS >= HAL_CPU_CLASS_75
 #define UBLOX_HW_LOGGING 1
+    #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO && NAVIO_RTK
+        #define UBLOX_NAVIO_RTK 1
+    #endif
 #else
 #define UBLOX_HW_LOGGING 0
 #endif
@@ -74,6 +78,7 @@ AP_GPS_UBLOX::AP_GPS_UBLOX(AP_GPS &_gps, AP_GPS::GPS_State &_state, AP_HAL::UART
   careful to only send a message if there is sufficient buffer space
   available on the serial port to avoid it blocking the CPU
  */
+#include <cstdio>
 void
 AP_GPS_UBLOX::send_next_rate_update(void)
 {
@@ -95,7 +100,7 @@ AP_GPS_UBLOX::send_next_rate_update(void)
         _configure_message_rate(CLASS_NAV, MSG_STATUS, 1); // 16+8 bytes
         break;
     case 3:
-        _configure_message_rate(CLASS_NAV, MSG_SOL, 1);    // 52+8 bytes
+        _configure_message_rate(CLASS_NAV, MSG_SOL, 1); // 52+8 bytes
         break;
     case 4:
         _configure_message_rate(CLASS_NAV, MSG_VELNED, 1); // 36+8 bytes
@@ -108,6 +113,23 @@ AP_GPS_UBLOX::send_next_rate_update(void)
     case 6:
         // gather MON_HW2 at 0.5Hz
         _configure_message_rate(CLASS_MON, MSG_MON_HW2, 2); // 24+8 bytes
+        break;
+#endif
+#if UBLOX_NAVIO_RTK
+    case 7:
+        _configure_message_rate(CLASS_TRK, MSG_TRK_SFRBX, 1); // 29 + 8 bytes
+        break;
+    case 8:
+        _configure_message_rate(CLASS_TRK, MSG_TRK_MEAS, 1); // 104 + nch*56 + 8 bytes
+        break;
+    case 9:
+        _configure_message_rate(CLASS_NAV, MSG_NAV_GPSTIME, 1); // 16+8 bytes
+        break;
+    case 10:
+        _configure_message_rate(CLASS_NAV, MSG_NAV_CLOCK, 1); // 20+8 bytes
+        break;
+    case 11:
+        _configure_message_rate(CLASS_MON, MSG_MON_TXBUF, 1); // 28+8 bytes
         break;
 #endif
     default:
@@ -198,8 +220,12 @@ AP_GPS_UBLOX::read(void)
             _ck_b += (_ck_a += data);                   // checksum byte
 
             _payload_length += (uint16_t)(data<<8);
+#if UBLOX_NAVIO_RTK
+            if (_payload_length > 512 && _msg_id != MSG_TRK_MEAS) {
+#else
             if (_payload_length > 512) {
-                Debug("large payload %u", (unsigned)_payload_length);
+#endif
+                Debug("large payload %u class: %u", (unsigned)_payload_length, _class);
                 // assume very large payloads are line noise
                 _payload_length = 0;
                 _step = 0;
@@ -371,20 +397,47 @@ AP_GPS_UBLOX::_parse_gps(void)
 
 #if UBLOX_HW_LOGGING
     if (_class == CLASS_MON) {
-        if (_msg_id == MSG_MON_HW) {
+        switch (_msg_id) {
+        case MSG_MON_HW:
             if (_payload_length == 60 || _payload_length == 68) {
                 log_mon_hw();
             }
-        } else if (_msg_id == MSG_MON_HW2) {
+            break;
+        case MSG_MON_HW2:
             if (_payload_length == 28) {
                 log_mon_hw2();  
             }
-        } else {
+            break;
+#if UBLOX_NAVIO_RTK
+        case MSG_MON_TXBUF:
+            Debug("MON_TXBUF");
+            break;
+#endif
+        default:
             unexpected_message();
+            break;
         }
+
         return false;
     }
 #endif // UBLOX_HW_LOGGING
+
+#ifdef UBLOX_NAVIO_RTK
+    if (_class == CLASS_TRK) {
+        switch (_msg_id) {
+            case MSG_TRK_MEAS:
+                Debug("TRK_MEAS");
+                break;
+            case MSG_TRK_SFRBX:
+                Debug("TRK_SFRBX");
+                break;
+            default:
+                unexpected_message();
+                break;
+        }
+        return false;
+    }
+#endif //UBLOX_NAVIO_RTK
 
     if (_class != CLASS_NAV) {
         unexpected_message();
@@ -485,6 +538,14 @@ AP_GPS_UBLOX::_parse_gps(void)
         state.speed_accuracy = _buffer.velned.speed_accuracy*0.01f;
         _new_speed = true;
         break;
+#if UBLOX_NAVIO_RTK
+    case MSG_NAV_CLOCK:
+        Debug("MSG_NAV_CLOCK");
+        break;
+    case MSG_NAV_GPSTIME:
+        Debug("MSG_NAV_GPSTIME");
+        break;
+#endif
     default:
         Debug("Unexpected NAV message 0x%02x", (unsigned)_msg_id);
         if (++_disable_counter == 0) {
@@ -516,7 +577,7 @@ AP_GPS_UBLOX::_parse_gps(void)
 		if (_fix_count == 100) {
 			// ask for nav settings every 20 seconds
 			Debug("Asking for engine setting\n");
-			_send_message(CLASS_CFG, MSG_CFG_NAV_SETTINGS, NULL, 0);
+//			_send_message(CLASS_CFG, MSG_CFG_NAV_SETTINGS, NULL, 0);
             _fix_count = 0;
 		}
 

@@ -215,6 +215,7 @@ private:
         CLASS_ACK = 0x05,
         CLASS_CFG = 0x06,
         CLASS_MON = 0x0A,
+        CLASS_TRK = 0x03,
         MSG_ACK_NACK = 0x00,
         MSG_ACK_ACK = 0x01,
         MSG_POSLLH = 0x2,
@@ -227,7 +228,12 @@ private:
         MSG_CFG_NAV_SETTINGS = 0x24,
         MSG_CFG_SBAS = 0x16,
         MSG_MON_HW = 0x09,
-        MSG_MON_HW2 = 0x0B
+        MSG_MON_HW2 = 0x0B,
+        MSG_MON_TXBUF = 0x08,
+        MSG_TRK_SFRBX = 0x0F,
+        MSG_TRK_MEAS = 0x10,
+        MSG_NAV_GPSTIME = 0x20,
+        MSG_NAV_CLOCK = 0x22
     };
     enum ubs_nav_fix_type {
         FIX_NONE = 0,
