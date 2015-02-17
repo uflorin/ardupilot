@@ -654,7 +654,7 @@ AP_GPS_UBLOX::_configure_navigation_rate(uint16_t rate_ms)
     struct ubx_cfg_nav_rate msg;
     msg.measure_rate_ms = rate_ms;
     msg.nav_rate        = 1;
-    msg.timeref         = 0;     // UTC time
+    msg.timeref         = 1;     // GPS time
     _send_message(CLASS_CFG, MSG_CFG_RATE, &msg, sizeof(msg));
 }
 
