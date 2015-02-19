@@ -5,6 +5,12 @@
 
 #include "UARTDriver.h"
 
+#define RTKLIB_PROXY 1
+#ifdef RTKLIB_PROXY
+#include <sys/socket.h>
+#include <arpa/inet.h>
+
+#endif
 
 class Linux::LinuxSPIUARTDriver : public Linux::LinuxUARTDriver {
 public:
@@ -27,6 +33,11 @@ private:
 
     uint8_t *_buffer;
     bool _external;
+
+#ifdef RTKLIB_PROXY
+    int _sockfd;
+    struct sockaddr_in servaddr;
+#endif
 };
 
 #endif //__AP_HAL_LINUX_SPIUARTDRIVER_H__

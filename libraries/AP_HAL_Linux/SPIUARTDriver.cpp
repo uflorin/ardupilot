@@ -7,6 +7,16 @@
 #include "SPIUARTDriver.h"
 #include "../AP_HAL/utility/RingBuffer.h"
 
+#define RTKLIB_PROXY 1
+#ifdef RTKLIB_PROXY
+#include <sys/ioctl.h>
+#include <fcntl.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <errno.h>
+
+#endif
+
 extern const AP_HAL::HAL& hal;
 
 #define SPIUART_DEBUG 1
@@ -27,10 +37,40 @@ LinuxSPIUARTDriver::LinuxSPIUARTDriver() :
     _spi_sem(NULL),
     _last_update_timestamp(0),
     _buffer(NULL),
-    _external(false)
+    _external(false),
+    _sockfd(-1)
 {
     _readbuf = NULL;
     _writebuf = NULL;
+#ifdef RTKLIB_PROXY
+    _sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (_sockfd < 0) {
+        perror("socket");
+        hal.scheduler->panic("socket() failed");
+    }
+
+    memset(&servaddr, 0, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    servaddr.sin_port = htons(12345);
+
+    int flags;
+
+    if ((flags = fcntl(_sockfd, F_GETFL, 0)) < 0) {
+        perror("fcntl");
+        hal.scheduler->panic("fcntl() failed");
+    }
+
+    if (fcntl(_sockfd, F_SETFL, flags | O_NONBLOCK) < 0) {
+        perror("fcntl");
+        hal.scheduler->panic("fcntl() failed");
+    }
+
+    if (connect(_sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
+        perror("connect");
+    }
+
+#endif
 }
 
 bool LinuxSPIUARTDriver::sem_take_nonblocking()
@@ -116,6 +156,12 @@ int LinuxSPIUARTDriver::_write_fd(const uint8_t *buf, uint16_t size)
 
     BUF_ADVANCEHEAD(_writebuf, size);
 
+    if (sendto(_sockfd, _buffer, size, MSG_NOSIGNAL, (struct sockaddr *)&servaddr,sizeof(servaddr)) < 0) {
+        if (errno != EPIPE) {
+            perror("sendto");
+        }
+    }
+
     uint16_t ret = size;
 
     /* Since all SPI-transactions are transfers we need update
@@ -164,7 +210,7 @@ int LinuxSPIUARTDriver::_write_fd(const uint8_t *buf, uint16_t size)
     
 }
 
-static const uint8_t ff_stub[300] = {0xff};
+static const uint8_t ff_stub[1500] = {0xff};
 int LinuxSPIUARTDriver::_read_fd(uint8_t *buf, uint16_t n)
 {
     if (_external) {
@@ -181,8 +227,8 @@ int LinuxSPIUARTDriver::_read_fd(uint8_t *buf, uint16_t n)
      * is a win.
      */  
 
-    if (n > 100) {
-        n = 100;
+    if (n > 1500) {
+        n = 1500;
     }
 
     _spi->transaction(ff_stub, buf, n);
@@ -190,6 +236,12 @@ int LinuxSPIUARTDriver::_read_fd(uint8_t *buf, uint16_t n)
     sem_give();
 
     BUF_ADVANCETAIL(_readbuf, n);
+
+    if (sendto(_sockfd, buf, n, MSG_NOSIGNAL, (struct sockaddr *)&servaddr,sizeof(servaddr)) < 0) {
+        if (errno != EPIPE) {
+            perror("sendto");
+        }
+    }
 
     return n;
 }
@@ -201,7 +253,7 @@ void LinuxSPIUARTDriver::_timer_tick(void)
         return;
     }
     /* lower the update rate */
-    if (hal.scheduler->micros() - _last_update_timestamp < 10000) {
+    if (hal.scheduler->micros() - _last_update_timestamp < 50000) {
         return;
     }
 
