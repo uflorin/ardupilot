@@ -26,6 +26,12 @@
 #define UBLOX_DEBUGGING 0
 #define UBLOX_FAKE_3DLOCK 0
 
+#if UBLOX_DEBUGGING && CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO 
+    #include <cassert>
+    #define ASSERT(...) assert(__VA_ARGS__)
+#else
+    #define ASSERT(...)
+#endif
 extern const AP_HAL::HAL& hal;
 
 #if UBLOX_DEBUGGING
@@ -130,6 +136,12 @@ AP_GPS_UBLOX::send_next_rate_update(void)
         break;
     case 11:
         _configure_message_rate(CLASS_MON, MSG_MON_TXBUF, 1); // 28+8 bytes
+        break;
+    case 12:
+        _configure_gnss();
+        break;
+    case 13:
+        _configure_ports();
         break;
 #endif
     default:
@@ -658,7 +670,89 @@ AP_GPS_UBLOX::_configure_navigation_rate(uint16_t rate_ms)
     _send_message(CLASS_CFG, MSG_CFG_RATE, &msg, sizeof(msg));
 }
 
+void AP_GPS_UBLOX::_configure_gnss_block(struct ubx_cfg_gnss_block *block, uint8_t id, uint8_t min_ch, uint8_t max_ch, 
+        bool enable, uint8_t frequency_band)
+{
+    block->gnss_id = id;
+    block->res_trk_ch = min_ch;
+    block->max_trk_ch = max_ch;
+
+    uint32_t flags;
+
+    flags = enable? 0x01: 0x00;
+
+    /* For all GNSS except QZSS the field is always set to 0x01.
+     * Refer to p.126 section 21.11.6.2 for further informaion
+     */
+
+    flags |= (frequency_band << 16);
+
+    block->flags = flags;
+}
+
 /*
+ *  configure a UBlox GNSS config 
+ */
+void
+AP_GPS_UBLOX::_configure_gnss(void)
+{
+    struct ubx_cfg_gnss msg;
+
+    /* GNSS blocks. All system are configured separately.
+     * See p.5 section 3.2 of u-blox M8 protocol spec. 
+     * for futher information 
+     */
+
+    struct ubx_cfg_gnss_block gps_block, glonass_block, 
+                              beidou_block, sbas_block, 
+                              qzss_block, imes_block, 
+                              galileo_block;
+
+    /* RTK Navio specific configuration
+     * For now we use GPS only, cause enabling GLONAS makes TRK-MEAS way too big
+     */
+
+    enum {
+        GPS_ID = 0x00,
+        SBAS_ID = 0x01,
+        GALILEO_ID = 0x02,
+        BEIDOU_ID = 0x03,
+        IMES_ID = 0x04,
+        QZSS_ID = 0x05,
+        GLONASS_ID = 0x06
+    };
+
+    /* enable only GPS */
+    _configure_gnss_block(&gps_block, GPS_ID, 8, 16, true);
+    _configure_gnss_block(&glonass_block, GLONASS_ID);
+    _configure_gnss_block(&sbas_block, SBAS_ID);
+    _configure_gnss_block(&imes_block, IMES_ID);
+    _configure_gnss_block(&beidou_block, BEIDOU_ID);
+    _configure_gnss_block(&galileo_block, GALILEO_ID);
+    _configure_gnss_block(&qzss_block, QZSS_ID);
+    
+
+    msg.msg_ver = 0x0; /* 0 for this version of firmware */
+    msg.num_trk_ch_use = 32; /* XXX figure out */
+    msg.num_config_blocks = 7; /* configure all channels */
+
+    struct ubx_cfg_gnss_block blocks[] = {gps_block, glonass_block, beidou_block, 
+                    sbas_block, qzss_block, imes_block, galileo_block};
+    
+    ASSERT(msg.num_config_blocks == ARRAY_SIZE(blocks));
+    ASSERT(ARRAY_SIZE(blocks) == 7);
+
+    /* fill out the config */
+    for (int i = 0; i < msg.num_config_blocks; i++) {
+        msg.blocks[i] = blocks[i];
+    }
+
+    _send_message(CLASS_CFG, MSG_CFG_GNSS, &msg, sizeof(msg));
+}
+
+/*
+ *  configure a UBlox ports
+ */
 void
 AP_GPS_UBLOX::_configure_ports(void)
 {

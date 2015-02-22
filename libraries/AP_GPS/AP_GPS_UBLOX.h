@@ -94,6 +94,22 @@ private:
         uint32_t scanmode1;
     };
 
+    struct PACKED ubx_cfg_gnss_block {
+        uint8_t gnss_id;
+        uint8_t res_trk_ch;
+        uint8_t max_trk_ch;
+        uint8_t res1;
+        uint32_t flags;
+    };
+
+    struct PACKED ubx_cfg_gnss {
+        uint8_t msg_ver;
+        uint8_t num_trk_ch_hw;
+        uint8_t num_trk_ch_use;
+        uint8_t num_config_blocks;
+        struct ubx_cfg_gnss_block blocks[7]; /* allocate memory for all gnss */
+    };
+
     struct PACKED ubx_cfg_prt {
         uint8_t port_id;
         uint8_t res1;
@@ -239,6 +255,7 @@ private:
         MSG_CFG_SET_RATE = 0x01,
         MSG_CFG_NAV_SETTINGS = 0x24,
         MSG_CFG_SBAS = 0x16,
+        MSG_CFG_GNSS = 0x3e,
         MSG_MON_HW = 0x09,
         MSG_MON_HW2 = 0x0B,
         MSG_MON_TXBUF = 0x08,
@@ -299,6 +316,9 @@ private:
     void        _configure_message_rate(uint8_t msg_class, uint8_t msg_id, uint8_t rate);
     void        _configure_gps(void);
     void        _configure_sbas(bool enable);
+    void        _configure_gnss(void);
+    void        _configure_gnss_block(struct ubx_cfg_gnss_block *block, uint8_t id, uint8_t min_ch = 1, 
+                                        uint8_t max_ch = 32, bool enable = false, uint8_t frequency_band = 0x01);
     void        _configure_ports(void);
     void        _update_checksum(uint8_t *data, uint8_t len, uint8_t &ck_a, uint8_t &ck_b);
     void        _send_message(uint8_t msg_class, uint8_t msg_id, void *msg, uint8_t size);
