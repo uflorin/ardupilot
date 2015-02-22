@@ -244,6 +244,7 @@ private:
         CLASS_CFG = 0x06,
         CLASS_MON = 0x0A,
         CLASS_TRK = 0x03,
+        CLASS_RXM = 0x02,
         MSG_ACK_NACK = 0x00,
         MSG_ACK_ACK = 0x01,
         MSG_POSLLH = 0x2,
@@ -261,6 +262,8 @@ private:
         MSG_MON_TXBUF = 0x08,
         MSG_TRK_SFRBX = 0x0F,
         MSG_TRK_MEAS = 0x10,
+        MSG_RXM_RAW = 0x10,
+        MSG_RXM_SFRB = 0x11,
         MSG_NAV_GPSTIME = 0x20,
         MSG_NAV_CLOCK = 0x22
     };

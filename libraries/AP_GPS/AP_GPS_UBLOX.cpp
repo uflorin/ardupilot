@@ -48,7 +48,11 @@ extern const AP_HAL::HAL& hal;
 #if HAL_CPU_CLASS >= HAL_CPU_CLASS_75
 #define UBLOX_HW_LOGGING 1
     #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO && NAVIO_RTK
-        #define UBLOX_NAVIO_PLUS_RTK 1
+        #if 1
+            #define UBLOX_NAVIO_PLUS_RTK 1
+        #else
+            #define UBLOX_NAVIO_RTK 1
+        #endif
     #endif
 #else
 #define UBLOX_HW_LOGGING 0
@@ -144,6 +148,20 @@ AP_GPS_UBLOX::send_next_rate_update(void)
         _configure_ports();
         break;
 #endif
+#if UBLOX_NAVIO_RTK
+    case 7:
+        _configure_message_rate(CLASS_RXM, MSG_RXM_SFRB, 1);
+        break;
+    case 8:
+        _configure_message_rate(CLASS_RXM, MSG_RXM_RAW, 1);
+        break;
+    case 9:
+        _configure_message_rate(CLASS_MON, MSG_MON_TXBUF, 1); // 28+8 bytes
+        break;
+    case 10:
+        _configure_ports();
+        break;
+#endif
     default:
         need_rate_update = false;
         rate_update_step = 0;
@@ -234,6 +252,8 @@ AP_GPS_UBLOX::read(void)
             _payload_length += (uint16_t)(data<<8);
 #if UBLOX_NAVIO_PLUS_RTK
             if (_payload_length > 512 && _msg_id != MSG_TRK_MEAS) {
+#elif UBLOX_NAVIO_RTK 
+            if (_payload_length > 512 && _msg_id != MSG_RXM_SFRB && _msg_id != MSG_RXM_RAW) {
 #else
             if (_payload_length > 512) {
 #endif
@@ -420,7 +440,7 @@ AP_GPS_UBLOX::_parse_gps(void)
                 log_mon_hw2();  
             }
             break;
-#if UBLOX_NAVIO_PLUS_RTK
+#if UBLOX_NAVIO_PLUS_RTK || UBLOX_NAVIO_RTK
         case MSG_MON_TXBUF:
             Debug("MON_TXBUF");
             break;
@@ -450,6 +470,23 @@ AP_GPS_UBLOX::_parse_gps(void)
         return false;
     }
 #endif //UBLOX_NAVIO_PLUS_RTK
+
+#ifdef UBLOX_NAVIO_RTK
+    if (_class == CLASS_RXM) {
+        switch (_msg_id) {
+            case MSG_RXM_RAW:
+                Debug("RXM_RAW");
+                break;
+            case MSG_RXM_SFRB:
+                Debug("RXM_SFRB");
+                break;
+            default:
+                unexpected_message();
+                break;
+        }
+        return false;
+    }
+#endif //UBLOX_NAVIO_RTK
 
     if (_class != CLASS_NAV) {
         unexpected_message();
