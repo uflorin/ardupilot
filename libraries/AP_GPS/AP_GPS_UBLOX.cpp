@@ -48,7 +48,7 @@ extern const AP_HAL::HAL& hal;
 #if HAL_CPU_CLASS >= HAL_CPU_CLASS_75
 #define UBLOX_HW_LOGGING 1
     #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO && NAVIO_RTK
-        #define UBLOX_NAVIO_RTK 1
+        #define UBLOX_NAVIO_PLUS_RTK 1
     #endif
 #else
 #define UBLOX_HW_LOGGING 0
@@ -121,7 +121,7 @@ AP_GPS_UBLOX::send_next_rate_update(void)
         _configure_message_rate(CLASS_MON, MSG_MON_HW2, 2); // 24+8 bytes
         break;
 #endif
-#if UBLOX_NAVIO_RTK
+#if UBLOX_NAVIO_PLUS_RTK
     case 7:
         _configure_message_rate(CLASS_TRK, MSG_TRK_SFRBX, 1); // 29 + 8 bytes
         break;
@@ -232,7 +232,7 @@ AP_GPS_UBLOX::read(void)
             _ck_b += (_ck_a += data);                   // checksum byte
 
             _payload_length += (uint16_t)(data<<8);
-#if UBLOX_NAVIO_RTK
+#if UBLOX_NAVIO_PLUS_RTK
             if (_payload_length > 512 && _msg_id != MSG_TRK_MEAS) {
 #else
             if (_payload_length > 512) {
@@ -420,7 +420,7 @@ AP_GPS_UBLOX::_parse_gps(void)
                 log_mon_hw2();  
             }
             break;
-#if UBLOX_NAVIO_RTK
+#if UBLOX_NAVIO_PLUS_RTK
         case MSG_MON_TXBUF:
             Debug("MON_TXBUF");
             break;
@@ -434,7 +434,7 @@ AP_GPS_UBLOX::_parse_gps(void)
     }
 #endif // UBLOX_HW_LOGGING
 
-#ifdef UBLOX_NAVIO_RTK
+#ifdef UBLOX_NAVIO_PLUS_RTK
     if (_class == CLASS_TRK) {
         switch (_msg_id) {
             case MSG_TRK_MEAS:
@@ -449,7 +449,7 @@ AP_GPS_UBLOX::_parse_gps(void)
         }
         return false;
     }
-#endif //UBLOX_NAVIO_RTK
+#endif //UBLOX_NAVIO_PLUS_RTK
 
     if (_class != CLASS_NAV) {
         unexpected_message();
@@ -550,7 +550,7 @@ AP_GPS_UBLOX::_parse_gps(void)
         state.speed_accuracy = _buffer.velned.speed_accuracy*0.01f;
         _new_speed = true;
         break;
-#if UBLOX_NAVIO_RTK
+#if UBLOX_NAVIO_PLUS_RTK
     case MSG_NAV_CLOCK:
         Debug("MSG_NAV_CLOCK");
         break;
