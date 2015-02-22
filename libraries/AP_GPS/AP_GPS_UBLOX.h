@@ -94,6 +94,18 @@ private:
         uint32_t scanmode1;
     };
 
+    struct PACKED ubx_cfg_prt {
+        uint8_t port_id;
+        uint8_t res1;
+        uint16_t tx_ready;
+        uint32_t mode;
+        uint8_t res2[4];
+        uint16_t in_proto_mask;
+        uint16_t out_proto_mask;
+        uint16_t flags;
+        uint8_t res3[2];
+    };
+
     struct PACKED ubx_nav_posllh {
         uint32_t time;                                  // GPS msToW
         int32_t longitude;
@@ -287,6 +299,7 @@ private:
     void        _configure_message_rate(uint8_t msg_class, uint8_t msg_id, uint8_t rate);
     void        _configure_gps(void);
     void        _configure_sbas(bool enable);
+    void        _configure_ports(void);
     void        _update_checksum(uint8_t *data, uint8_t len, uint8_t &ck_a, uint8_t &ck_b);
     void        _send_message(uint8_t msg_class, uint8_t msg_id, void *msg, uint8_t size);
     void		send_next_rate_update(void);

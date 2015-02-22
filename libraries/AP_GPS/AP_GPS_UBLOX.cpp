@@ -659,6 +659,28 @@ AP_GPS_UBLOX::_configure_navigation_rate(uint16_t rate_ms)
 }
 
 /*
+void
+AP_GPS_UBLOX::_configure_ports(void)
+{
+    struct ubx_cfg_prt msg;
+
+    /* NavIO specific configuration 
+     * M8N receiver on NavIO uses SPI. Thus, we may disable NMEA alltogether. 
+     */
+
+    static const uint8_t ffCount = 0x32; /* Number of bytes containing 0xFF to receive before switching off reception. */
+
+    msg.port_id = 0x4; /* SPI */
+    msg.tx_ready = 0x0; /* Not using this feature for now */
+    msg.mode = ffCount << 8; /* ffCount */
+    msg.in_proto_mask = 0x1; /* mask for UBX only input */
+    msg.out_proto_mask = 0x1; /* mask for UBX only input */
+    msg.flags = 0x0; /* no special flags is needed */
+
+    _send_message(CLASS_CFG, MSG_CFG_PRT, &msg, sizeof(msg));
+}
+
+/*
  *  configure a UBlox GPS for the given message rate
  */
 void
