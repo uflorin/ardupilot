@@ -29,6 +29,7 @@
 #if UBLOX_DEBUGGING && CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO 
     #include <cassert>
     #define ASSERT(...) assert(__VA_ARGS__)
+    #define ARRAY_SIZE(array) sizeof(array) / sizeof(array[0])
 #else
     #define ASSERT(...)
 #endif
