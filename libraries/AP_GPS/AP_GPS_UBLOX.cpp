@@ -49,7 +49,7 @@ extern const AP_HAL::HAL& hal;
 #if HAL_CPU_CLASS >= HAL_CPU_CLASS_75
 #define UBLOX_HW_LOGGING 1
     #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO && NAVIO_RTK
-        #if 1
+        #if 0
             #define UBLOX_NAVIO_PLUS_RTK 1
         #else
             #define UBLOX_NAVIO_RTK 1
