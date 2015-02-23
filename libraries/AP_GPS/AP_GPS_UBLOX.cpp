@@ -405,9 +405,9 @@ AP_GPS_UBLOX::_parse_gps(void)
             _buffer.nav_settings.mask |= 2;
         }
         if (_buffer.nav_settings.mask != 0) {
-            _send_message(CLASS_CFG, MSG_CFG_NAV_SETTINGS,
-                          &_buffer.nav_settings,
-                          sizeof(_buffer.nav_settings));
+//            _send_message(CLASS_CFG, MSG_CFG_NAV_SETTINGS,
+//                          &_buffer.nav_settings,
+//                          sizeof(_buffer.nav_settings));
         }
         return false;
     }
