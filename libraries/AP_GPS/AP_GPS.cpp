@@ -397,6 +397,16 @@ AP_GPS::update(void)
 #else
     num_instances = 1;
 #endif // GPS_MAX_INSTANCES
+
+    /* Quick hack: if 2nd GPS (RTK) is present, we prefer it over 
+     * an oridnary one.
+     */
+
+    if (state[1].status >= GPS_OK_FIX_2D) {
+        // we have a higher status lock, change GPS
+        primary_instance = 1;
+    }
+
 	// update notify with gps status. We always base this on the primary_instance
     AP_Notify::flags.gps_status = state[primary_instance].status;
 }
