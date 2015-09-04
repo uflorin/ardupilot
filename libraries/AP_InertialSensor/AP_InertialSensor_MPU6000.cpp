@@ -417,7 +417,7 @@ AP_InertialSensor_Backend *AP_InertialSensor_MPU6000::detect_spi(AP_InertialSens
 AP_InertialSensor_Backend *AP_InertialSensor_MPU6000::detect_i2c2(AP_InertialSensor &_imu)
 {
     AP_InertialSensor_MPU6000 *sensor = new AP_InertialSensor_MPU6000(_imu,
-                                        new AP_MPU6000_BusDriver_I2C(hal.i2c2, HAL_INS_MPU60XX_I2C_ADDR));
+                                        new AP_MPU6000_BusDriver_I2C(hal.i2c, HAL_INS_MPU60XX_I2C_ADDR));
     if (sensor == NULL) {
         return NULL;
     }
