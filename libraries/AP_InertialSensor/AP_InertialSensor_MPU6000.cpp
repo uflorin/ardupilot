@@ -72,6 +72,7 @@ extern const AP_HAL::HAL& hal;
 #define MPUREG_INT_PIN_CFG                              0x37
 #       define BIT_INT_RD_CLEAR                                 0x10    // clear the interrupt when any read occurs
 #       define BIT_LATCH_INT_EN                                 0x20    // latch data ready pin 
+#       define BIT_I2c_BYPASS_EN                                0x02
 #define MPUREG_INT_ENABLE                               0x38
 // bit definitions for MPUREG_INT_ENABLE
 #       define BIT_RAW_RDY_EN                                   0x01
@@ -749,7 +750,8 @@ bool AP_InertialSensor_MPU6000::_hardware_init(void)
     // Therefore the sample rate value is 8kHz/(SMPLRT_DIV + 1)
     // So we have to set it to 7 to have a 1kHz sampling
     // rate on the gyro
-    _register_write(MPUREG_SMPLRT_DIV, 7);
+    //_register_write(MPUREG_SMPLRT_DIV, 7);
+    _register_write(MPUREG_SMPLRT_DIV, MPUREG_SMPLRT_100HZ);
 #else
     _set_filter_register(_accel_filter_cutoff());
 
@@ -759,7 +761,8 @@ bool AP_InertialSensor_MPU6000::_hardware_init(void)
 #endif
     hal.scheduler->delay(1);
 
-    _register_write(MPUREG_GYRO_CONFIG, BITS_GYRO_FS_2000DPS);  // Gyro scale 2000º/s
+    //_register_write(MPUREG_GYRO_CONFIG, BITS_GYRO_FS_2000DPS);  // Gyro scale 2000º/s
+    _register_write(MPUREG_GYRO_CONFIG, BITS_GYRO_FS_250DPS);  // Gyro scale 250º/s
     hal.scheduler->delay(1);
 
     // read the product ID rev c has 1/2 the sensitivity of rev d
@@ -786,6 +789,18 @@ bool AP_InertialSensor_MPU6000::_hardware_init(void)
     // clear interrupt on any read, and hold the data ready pin high
     // until we clear the interrupt
     _register_write(MPUREG_INT_PIN_CFG, BIT_INT_RD_CLEAR | BIT_LATCH_INT_EN);
+    
+    uint8_t user_ctrl;
+    user_ctrl = _register_read(MPUREG_USER_CTRL);
+    _register_write(MPUREG_USER_CTRL, user_ctrl & ~BIT_USER_CTRL_I2C_MST_EN);
+    
+    uint8_t ra_int_pin_cfg;
+    ra_int_pin_cfg = _register_read(MPUREG_INT_PIN_CFG);
+    _register_write(MPUREG_INT_PIN_CFG, ra_int_pin_cfg | BIT_I2c_BYPASS_EN);
+    
+    uint8_t ra_pwr_mgmt_1;
+    ra_pwr_mgmt_1 = _register_read(MPUREG_PWR_MGMT_1);
+    _register_write(MPUREG_PWR_MGMT_1, ra_pwr_mgmt_1 & ~BIT_PWR_MGMT_1_SLEEP);
 
     // now that we have initialised, we set the SPI bus speed to high
     // (8MHz on APM2)
