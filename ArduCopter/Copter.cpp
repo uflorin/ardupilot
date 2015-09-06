@@ -22,7 +22,7 @@
 const AP_HAL::HAL& hal = AP_HAL_BOARD_DRIVER;
 
 Copter::Copter(void) :
-    ins_sample_rate(AP_InertialSensor::RATE_400HZ),
+    ins_sample_rate(AP_InertialSensor::RATE_100HZ),
     flight_modes(&g.flight_mode1),
     sonar_enabled(true),
     mission(ahrs, 

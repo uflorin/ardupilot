@@ -14,7 +14,7 @@
 
 // on fast CPUs we sample at 1kHz and use a software filter
 #if HAL_CPU_CLASS >= HAL_CPU_CLASS_75
-#define MPU6000_FAST_SAMPLING 1
+#define MPU6000_FAST_SAMPLING 0
 #else
 #define MPU6000_FAST_SAMPLING 0
 #endif

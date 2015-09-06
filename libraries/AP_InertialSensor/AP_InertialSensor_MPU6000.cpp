@@ -737,6 +737,7 @@ bool AP_InertialSensor_MPU6000::_hardware_init(void)
         _sample_count = 1;
         break;
     default:
+        _bus_sem->give();
         return false;
     }
 #endif
