@@ -34,6 +34,7 @@ public:
 
     void _process_ppmsum_pulse(uint16_t width);
     void _process_sbus_pulse(uint16_t width_s0, uint16_t width_s1);
+    void _process_ibus_pulse(uint16_t width_s0, uint16_t width_s1);
     void _process_dsm_pulse(uint16_t width_s0, uint16_t width_s1);
 
     /* override state */
@@ -50,6 +51,13 @@ public:
 	uint16_t bytes[25]; // including start bit, parity and stop bits
 	uint16_t bit_ofs;
     } sbus_state;
+
+    // state of iBUS bit decoder
+    struct {
+	uint16_t bytes[32]; // including start bit, parity and stop bits
+	uint16_t bit_ofs;
+        uint16_t frame_size;
+    } ibus_state;
 
     // state of DSM decoder
     struct {

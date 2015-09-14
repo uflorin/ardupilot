@@ -186,7 +186,7 @@ void LinuxRCInput::_process_sbus_pulse(uint16_t width_s0, uint16_t width_s1)
     bits_s1 -= nlow;
     sbus_state.bit_ofs += nlow;
 
-    if (sbus_state.bit_ofs == 25*12 && bits_s1 > 12) {
+    if (sbus_state.bit_ofs == 32*12 && bits_s1 > 12) {
         // we have a full frame
         uint8_t bytes[25];
         uint8_t i;
@@ -232,6 +232,170 @@ void LinuxRCInput::_process_sbus_pulse(uint16_t width_s0, uint16_t width_s1)
     return;
 reset:
     memset(&sbus_state, 0, sizeof(sbus_state));        
+}
+
+/*
+  process a iBUS input pulse of the given width
+ */
+void LinuxRCInput::_process_ibus_pulse(uint16_t width_s0, uint16_t width_s1)
+{
+    // convert to bit widths, allowing for up to 1usec error, assuming 100000 bps
+    uint16_t bits_s0 = (width_s0+1) / 8;
+    uint16_t bits_s1 = (width_s1+1) / 8;
+    uint16_t nlow;
+    uint8_t byte_ofs;
+    uint8_t bit_ofs;
+    
+    if (ibus_state.frame_size == 0)
+    {
+        ibus_state.frame_size = 1;
+    }
+
+    if (bits_s0 == 0 || bits_s1 == 0) {
+        // invalid data
+        hal.console->printf_P(PSTR("invalid data\n"));
+        goto reset;
+    }
+    
+    if (bits_s0 > 10) {
+        hal.console->printf_P(PSTR("*******************************************************************************************\n"));
+        
+        if (ibus_state.bit_ofs%10 == 9)
+        {
+            bits_s0 = 10 - (ibus_state.bit_ofs%10);
+        }
+        else
+        {
+            hal.console->printf_P(PSTR("ibus_state.bit_ofs 10 != 9, %d\n"), ibus_state.bit_ofs);
+            bits_s0 = 0;
+            memset(&ibus_state, 0, sizeof(ibus_state));
+        }
+    }
+    
+    byte_ofs = ibus_state.bit_ofs/10;
+    bit_ofs = ibus_state.bit_ofs%10;
+	
+    if (bits_s0+bit_ofs > 10) {
+        // invalid data as last two bits must be stop bits
+        hal.console->printf_P(PSTR("invalid data as last two bits must be stop bits\n"));
+        goto reset;
+    }
+
+    // pull in the high bits
+    ibus_state.bytes[byte_ofs] |= ((1U<<bits_s0)-1) << bit_ofs;
+    ibus_state.bit_ofs += bits_s0;
+    bit_ofs += bits_s0;
+
+    // pull in the low bits
+    nlow = bits_s1;
+    if (nlow + bit_ofs > 10) {
+        nlow = 10 - bit_ofs;
+    }
+    bits_s1 -= nlow;
+    ibus_state.bit_ofs += nlow;
+    
+    hal.console->printf_P(PSTR("ibus_state.bit_ofs: %d; bits_s1: %d\n"), ibus_state.bit_ofs, bits_s1);
+
+//    if (ibus_state.bit_ofs == 32*10) {
+      if (ibus_state.bit_ofs == ibus_state.frame_size*10) {
+          //hal.console->printf_P(PSTR("                   ibus_state.bit_ofs == frame_size*10\n"));
+          
+        // we have a full frame
+        uint8_t bytes[ibus_state.frame_size];
+        memset(bytes, 0, ibus_state.frame_size);
+        
+        uint8_t i;
+        for (i=0; i<ibus_state.frame_size; i++) {
+            // get inverted data
+            uint16_t v = ibus_state.bytes[i];
+            // check start bit
+            if ((v & 1) != 0) {
+                hal.console->printf_P(PSTR("check start bit %d\n"), i);
+                goto reset;
+            }
+            // check stop bits
+            if ((v & 0x200) != 0x200) {
+                hal.console->printf_P(PSTR("check stop bits %d\n"), i);
+                goto reset;
+            }
+            bytes[i] = ((v>>1) & 0xFF);
+        }
+//        uint16_t values[LINUX_RC_INPUT_NUM_CHANNELS];
+//        uint16_t num_values=0;
+//        bool ibus_failsafe=false, ibus_frame_drop=false;
+        
+        if (ibus_state.frame_size == 1 && bytes[0] == 0x20)
+        {
+            hal.console->printf_P(PSTR("0x20\n"));
+            
+            ibus_state.bit_ofs += bits_s1;
+            ibus_state.frame_size = 2;
+        } else if (ibus_state.frame_size == 2 && bytes[0] == 0x20 && bytes[1] == 0x40)
+        {
+            //hal.scheduler->panic(PSTR("MPU6000: Unable to get semaphore"));
+            hal.console->printf_P(PSTR("0x20 0x40\n"));
+            ibus_state.bit_ofs += bits_s1;
+            ibus_state.frame_size = 32;
+        }
+        else
+        {
+            if (ibus_state.frame_size > 2 && bytes[0] == 0x20 && bytes[1] == 0x40
+                    //&& bytes[15] == 0xf3
+                    )
+            {
+                hal.console->printf_P(PSTR("ALL GOOD\n"));
+                
+                for (i=0; i<ibus_state.frame_size; i++) {
+                    hal.console->printf_P(PSTR("%02x "), bytes[i]);
+                }
+                
+                hal.console->printf_P(PSTR("\nEND GOOD\n"));
+                
+                uint8_t chksum = 159;
+                for(i=2;i<30;i++) chksum -= bytes[i];
+                
+                if (chksum == bytes[30])
+                {
+                    hal.console->printf_P(PSTR("\nCHKSUM\n"));
+                }
+                
+                hal.console->printf_P(PSTR("chksum %02x "), chksum);
+            }
+            
+            //hal.console->printf_P(PSTR("bytes[0]: %02x\n"), bytes[0]);
+            
+            memset(&ibus_state, 0, sizeof(ibus_state));
+            ibus_state.bit_ofs = bits_s1;
+        }
+//        num_values = 5;
+//        if (num_values > 3
+////                ibus_decode(bytes, values, &num_values, 
+////                        &ibus_failsafe, &ibus_frame_drop, 
+////                        LINUX_RC_INPUT_NUM_CHANNELS) && 
+////            num_values >= 5
+//                ) {
+//            for (i=0; i<num_values; i++) {
+//                _pwm_values[i] = values[i];
+//            }
+//            _num_channels = num_values;
+//            new_rc_input = true;
+//        }
+        //goto reset;
+    } else
+        if (bits_s1 > 10) {
+        // break
+        hal.console->printf_P(PSTR("bits_s1 > 10\n"));
+        goto reset;
+    }
+        else
+        {
+            ibus_state.bit_ofs += bits_s1;
+        }
+    
+    
+    return;
+reset:
+    memset(&ibus_state, 0, sizeof(ibus_state));
 }
 
 void LinuxRCInput::_process_dsm_pulse(uint16_t width_s0, uint16_t width_s1)
@@ -327,14 +491,20 @@ void LinuxRCInput::_process_rc_pulse(uint16_t width_s0, uint16_t width_s1)
         fprintf(rclog, "%u %u\n", (unsigned)width_s0, (unsigned)width_s1);
     }
 #endif
+    
+    hal.console->printf_P(PSTR("width_s0: %02x; width_s1: %02x\n"), width_s0, width_s1);
+    
     // treat as PPM-sum
-    _process_ppmsum_pulse(width_s0 + width_s1);
+    //_process_ppmsum_pulse(width_s0 + width_s1);
 
     // treat as SBUS
-    _process_sbus_pulse(width_s0, width_s1);
+    //_process_sbus_pulse(width_s0, width_s1);
+
+    // treat as iBUS
+    _process_ibus_pulse(width_s0, width_s1);
 
     // treat as DSM
-    _process_dsm_pulse(width_s0, width_s1);
+    //_process_dsm_pulse(width_s0, width_s1);
 }
 
 #endif // CONFIG_HAL_BOARD
