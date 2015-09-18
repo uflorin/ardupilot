@@ -240,11 +240,13 @@ reset:
 void LinuxRCInput::_process_ibus_pulse(uint16_t width_s0, uint16_t width_s1)
 {
     // convert to bit widths, allowing for up to 1usec error, assuming 100000 bps
-    uint16_t bits_s0 = (width_s0+1) / 8;
-    uint16_t bits_s1 = (width_s1+1) / 8;
+    uint16_t bits_s0 = (width_s0+2) / 8.0f;
+    uint16_t bits_s1 = (width_s1+2) / 8.0f;
     uint16_t nlow;
     uint8_t byte_ofs;
     uint8_t bit_ofs;
+    
+    //hal.console->printf_P(PSTR("bits_s0 %d, bits_s1 %d\n"), bits_s0, bits_s1);
     
     if (ibus_state.frame_size == 0)
     {
@@ -257,29 +259,36 @@ void LinuxRCInput::_process_ibus_pulse(uint16_t width_s0, uint16_t width_s1)
         goto reset;
     }
     
-    if (bits_s0 > 10) {
-        hal.console->printf_P(PSTR("*******************************************************************************************\n"));
-        
-        if (ibus_state.bit_ofs%10 == 9)
-        {
-            bits_s0 = 10 - (ibus_state.bit_ofs%10);
-        }
-        else
-        {
-            hal.console->printf_P(PSTR("ibus_state.bit_ofs 10 != 9, %d\n"), ibus_state.bit_ofs);
-            bits_s0 = 0;
-            memset(&ibus_state, 0, sizeof(ibus_state));
-        }
-    }
+//    if (bits_s0 > 50) {
+//        memset(&ibus_state, 0, sizeof(ibus_state));
+//    }
     
     byte_ofs = ibus_state.bit_ofs/10;
     bit_ofs = ibus_state.bit_ofs%10;
 	
-    if (bits_s0+bit_ofs > 10) {
-        // invalid data as last two bits must be stop bits
-        hal.console->printf_P(PSTR("invalid data as last two bits must be stop bits\n"));
-        goto reset;
+    if (bits_s0+bit_ofs >= 10) {
+        //hal.console->printf_P(PSTR("*******************************************************************************************\n"));
+        
+        //if (bit_ofs > 1 && bit_ofs < 10)
+        if (bit_ofs > 1)
+        {
+            bits_s0 = 10 - bit_ofs;
+        }
+        else
+        {
+            //hal.console->printf_P(PSTR("ibus_state.bit_ofs 10 != 9, %d\n"), ibus_state.bit_ofs);
+            bits_s0 = 0;
+            byte_ofs = 0;
+            bit_ofs = 0;
+            memset(&ibus_state, 0, sizeof(ibus_state));
+        }
     }
+	
+//    if (bits_s0+bit_ofs > 10) {
+//        // invalid data as last two bits must be stop bits
+//        hal.console->printf_P(PSTR("invalid data as last two bits must be stop bits\n"));
+//        goto reset;
+//    }
 
     // pull in the high bits
     ibus_state.bytes[byte_ofs] |= ((1U<<bits_s0)-1) << bit_ofs;
@@ -294,7 +303,7 @@ void LinuxRCInput::_process_ibus_pulse(uint16_t width_s0, uint16_t width_s1)
     bits_s1 -= nlow;
     ibus_state.bit_ofs += nlow;
     
-    hal.console->printf_P(PSTR("ibus_state.bit_ofs: %d; bits_s1: %d\n"), ibus_state.bit_ofs, bits_s1);
+    //hal.console->printf_P(PSTR("ibus_state.bit_ofs: %d; bits_s1: %d\n"), ibus_state.bit_ofs, bits_s1);
 
 //    if (ibus_state.bit_ofs == 32*10) {
       if (ibus_state.bit_ofs == ibus_state.frame_size*10) {
@@ -310,12 +319,19 @@ void LinuxRCInput::_process_ibus_pulse(uint16_t width_s0, uint16_t width_s1)
             uint16_t v = ibus_state.bytes[i];
             // check start bit
             if ((v & 1) != 0) {
-                hal.console->printf_P(PSTR("check start bit %d\n"), i);
+                //hal.console->printf_P(PSTR("check start bit %d\n"), i);
                 goto reset;
             }
             // check stop bits
             if ((v & 0x200) != 0x200) {
-                hal.console->printf_P(PSTR("check stop bits %d\n"), i);
+//                hal.console->printf_P(PSTR("check stop bits %d\n"), i);
+//                
+//                for (int j=0; j<=i; j++) {
+//                    hal.console->printf_P(PSTR("%04x "), ibus_state.bytes[j]);
+//                }
+//                
+//                hal.console->printf_P(PSTR("\n"));
+                
                 goto reset;
             }
             bytes[i] = ((v>>1) & 0xFF);
@@ -326,40 +342,80 @@ void LinuxRCInput::_process_ibus_pulse(uint16_t width_s0, uint16_t width_s1)
         
         if (ibus_state.frame_size == 1 && bytes[0] == 0x20)
         {
-            hal.console->printf_P(PSTR("0x20\n"));
+            //hal.console->printf_P(PSTR("0x20\n"));
             
             ibus_state.bit_ofs += bits_s1;
             ibus_state.frame_size = 2;
         } else if (ibus_state.frame_size == 2 && bytes[0] == 0x20 && bytes[1] == 0x40)
         {
             //hal.scheduler->panic(PSTR("MPU6000: Unable to get semaphore"));
-            hal.console->printf_P(PSTR("0x20 0x40\n"));
+            //hal.console->printf_P(PSTR("0x20 0x40\n"));
             ibus_state.bit_ofs += bits_s1;
             ibus_state.frame_size = 32;
+            //ibus_state.frame_size = 1;
         }
         else
         {
+            //goto reset;
             if (ibus_state.frame_size > 2 && bytes[0] == 0x20 && bytes[1] == 0x40
                     //&& bytes[15] == 0xf3
                     )
             {
-                hal.console->printf_P(PSTR("ALL GOOD\n"));
-                
-                for (i=0; i<ibus_state.frame_size; i++) {
-                    hal.console->printf_P(PSTR("%02x "), bytes[i]);
-                }
-                
-                hal.console->printf_P(PSTR("\nEND GOOD\n"));
+//                hal.console->printf_P(PSTR("ALL GOOD\n"));
+//                
+//                for (i=0; i<ibus_state.frame_size; i++) {
+//                    hal.console->printf_P(PSTR("%02x "), bytes[i]);
+//                }
+//                
+//                hal.console->printf_P(PSTR("\nEND GOOD\n"));
                 
                 uint8_t chksum = 159;
                 for(i=2;i<30;i++) chksum -= bytes[i];
                 
                 if (chksum == bytes[30])
                 {
-                    hal.console->printf_P(PSTR("\nCHKSUM\n"));
+                    //hal.console->printf_P(PSTR("\nCHKSUM\n"));
+                    
+                    _num_channels = 8;
+                    
+                    _pwm_values[0] = (bytes[3]<<8) + bytes[2];
+                    _pwm_values[1] = (bytes[5]<<8) + bytes[4];
+                    _pwm_values[2] = (bytes[7]<<8) + bytes[6];
+                    _pwm_values[3] = (bytes[9]<<8) + bytes[8];
+                    _pwm_values[4] = (bytes[11]<<8) + bytes[10];
+                    _pwm_values[5] = (bytes[13]<<8) + bytes[12];
+                    _pwm_values[6] = (bytes[15]<<8) + bytes[14];
+                    _pwm_values[7] = (bytes[17]<<8) + bytes[16];
+                    
+                    bool isInvalid = false;
+                    
+                    for(i=0;i<_num_channels;i++)
+                    {
+                        if (_pwm_values[i] > 2000)
+                        {
+                            isInvalid = true;
+                            break;
+                        }
+                    }
+                    
+                    if (isInvalid)
+                    {
+                        for(i=0;i<_num_channels;i++)
+                        {
+                            _pwm_values[i] = 0;
+                        }
+                        
+                        new_rc_input = false;
+                    }
+                    else
+                    {
+                        new_rc_input = true;
+                        
+                        //hal.console->printf_P(PSTR("_pwm_values[0] %d\n"), _pwm_values[0]);
+                    }
                 }
                 
-                hal.console->printf_P(PSTR("chksum %02x "), chksum);
+                //hal.console->printf_P(PSTR("chksum %02x "), chksum);
             }
             
             //hal.console->printf_P(PSTR("bytes[0]: %02x\n"), bytes[0]);
@@ -492,7 +548,7 @@ void LinuxRCInput::_process_rc_pulse(uint16_t width_s0, uint16_t width_s1)
     }
 #endif
     
-    hal.console->printf_P(PSTR("width_s0: %02x; width_s1: %02x\n"), width_s0, width_s1);
+    //hal.console->printf_P(PSTR("width_s0: %02x; width_s1: %02x\n"), width_s0, width_s1);
     
     // treat as PPM-sum
     //_process_ppmsum_pulse(width_s0 + width_s1);
