@@ -194,8 +194,8 @@ void LinuxRCOutput_Navio::set_freq(uint32_t chmask, uint16_t freq_hz)
 							PCA9685_MODE1_SLEEP_BIT);
 
     /* Restart the device to apply new settings and enable auto-incremented write */
-    hal.i2c->writeRegister(PCA9685_ADDRESS, PCA9685_RA_MODE1, 
-                            PCA9685_MODE1_SLEEP_BIT | PCA9685_MODE1_EXTCLK_BIT); 
+    /*hal.i2c->writeRegister(PCA9685_ADDRESS, PCA9685_RA_MODE1, 
+                            PCA9685_MODE1_SLEEP_BIT | PCA9685_MODE1_EXTCLK_BIT); */
 
     /* Restart the device to apply new settings and enable auto-incremented write */
     hal.i2c->writeRegister(PCA9685_ADDRESS, PCA9685_RA_MODE1,
