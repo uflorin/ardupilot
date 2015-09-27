@@ -23,6 +23,7 @@ LIBRARIES += AP_Notify
 LIBRARIES += AP_Param
 LIBRARIES += AP_Progmem
 LIBRARIES += AP_RangeFinder
+LIBRARIES += AP_Rally
 LIBRARIES += AP_Terrain
 LIBRARIES += AP_Vehicle
 LIBRARIES += DataFlash
