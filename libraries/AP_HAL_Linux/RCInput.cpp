@@ -265,6 +265,12 @@ void LinuxRCInput::_process_ibus_pulse(uint16_t width_s0, uint16_t width_s1)
     
     byte_ofs = ibus_state.bit_ofs/10;
     bit_ofs = ibus_state.bit_ofs%10;
+    
+    if (byte_ofs >= ibus_state.frame_size) {
+        // invalid data
+        hal.console->printf_P(PSTR("byte_ofs overflow\n"));
+        goto reset;
+    }
 	
     if (bits_s0+bit_ofs >= 10) {
         //hal.console->printf_P(PSTR("*******************************************************************************************\n"));
@@ -551,13 +557,13 @@ void LinuxRCInput::_process_rc_pulse(uint16_t width_s0, uint16_t width_s1)
     //hal.console->printf_P(PSTR("width_s0: %02x; width_s1: %02x\n"), width_s0, width_s1);
     
     // treat as PPM-sum
-    //_process_ppmsum_pulse(width_s0 + width_s1);
+    _process_ppmsum_pulse(width_s0 + width_s1);
 
     // treat as SBUS
     //_process_sbus_pulse(width_s0, width_s1);
 
     // treat as iBUS
-    _process_ibus_pulse(width_s0, width_s1);
+    //_process_ibus_pulse(width_s0, width_s1);
 
     // treat as DSM
     //_process_dsm_pulse(width_s0, width_s1);

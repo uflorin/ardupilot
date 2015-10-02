@@ -379,9 +379,9 @@ bool Copter::pre_arm_checks(bool display_failure)
     }
 
     // check GPS
-    if (!pre_arm_gps_checks(display_failure)) {
-        return false;
-    }
+//    if (!pre_arm_gps_checks(display_failure)) {
+//        return false;
+//    }
 
 #if AC_FENCE == ENABLED
     // check fence is initialised
@@ -610,6 +610,9 @@ void Copter::pre_arm_rc_checks()
 // performs pre_arm gps related checks and returns true if passed
 bool Copter::pre_arm_gps_checks(bool display_failure)
 {
+     // if we got here all must be ok
+    AP_Notify::flags.pre_arm_gps_check = true;
+    return true;
     // always check if inertial nav has started and is ready
     if(!ahrs.get_NavEKF().healthy()) {
         if (display_failure) {
@@ -683,12 +686,12 @@ bool Copter::arm_checks(bool display_failure, bool arming_from_gcs)
 #endif
 
     // always check if inertial nav has started and is ready
-    if(!ahrs.healthy()) {
-        if (display_failure) {
-            gcs_send_text_P(SEVERITY_HIGH,PSTR("Arm: Waiting for Nav Checks"));
-        }
-        return false;
-    }
+//    if(!ahrs.healthy()) {
+//        if (display_failure) {
+//            gcs_send_text_P(SEVERITY_HIGH,PSTR("Arm: Waiting for Nav Checks"));
+//        }
+//        return false;
+//    }
 
     // always check if the current mode allows arming
     if (!mode_allows_arming(control_mode, arming_from_gcs)) {

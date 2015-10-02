@@ -367,8 +367,14 @@ AP_HAL::Semaphore* AP_MPU6000_BusDriver_I2C::get_semaphore()
 /*
  *  RM-MPU-6000A-00.pdf, page 33, section 4.25 lists LSB sensitivity of
  *  gyro as 16.4 LSB/DPS at scale factor of +/- 2000dps (FS_SEL==3)
+ * 
+ * 0.0174532f = PI / 180
+ * 
+ * RM-MPU-6000A-00.pdf, page 33, section 4.25 lists LSB sensitivity of
+ *  gyro as 131 LSB/DPS at scale factor of +/- 250dps (FS_SEL==0)
  */
 const float AP_InertialSensor_MPU6000::_gyro_scale = (0.0174532f / 16.4f);
+//const float AP_InertialSensor_MPU6000::_gyro_scale = (0.0174532f / 131.0f);
 
 /*
  *  RM-MPU-6000A-00.pdf, page 31, section 4.23 lists LSB sensitivity of
@@ -517,6 +523,9 @@ bool AP_InertialSensor_MPU6000::update( void )
     accel.rotate(ROTATION_YAW_270);
     gyro.rotate(ROTATION_YAW_270);
 #endif
+    
+    accel.rotate(ROTATION_ROLL_180);
+    gyro.rotate(ROTATION_ROLL_180);
 
     _publish_accel(_accel_instance, accel);
     _publish_gyro(_gyro_instance, gyro);
@@ -579,6 +588,8 @@ void AP_InertialSensor_MPU6000::_poll_data(void)
 
 void AP_InertialSensor_MPU6000::_accumulate(uint8_t *samples, uint8_t n_samples)
 {
+    //hal.console->printf_P(PSTR("n_samples %d\n"), n_samples);
+    
     for(uint8_t i=0; i < n_samples; i++) {
         uint8_t *data = samples + MPU6000_SAMPLE_SIZE * i;
 #if MPU6000_FAST_SAMPLING
@@ -590,14 +601,31 @@ void AP_InertialSensor_MPU6000::_accumulate(uint8_t *samples, uint8_t n_samples)
                                                      int16_val(data, 3),
                                                     -int16_val(data, 5)));
 #else
-        _accel_sum.x += int16_val(data, 1);
-        _accel_sum.y += int16_val(data, 0);
-        _accel_sum.z -= int16_val(data, 2);
-        _gyro_sum.x  += int16_val(data, 4);
-        _gyro_sum.y  += int16_val(data, 3);
-        _gyro_sum.z  -= int16_val(data, 5);
+//        _accel_sum.x += int16_val(data, 1);
+//        _accel_sum.y += int16_val(data, 0);
+//        _accel_sum.z -= int16_val(data, 2);
+//        _gyro_sum.x  += int16_val(data, 4);
+//        _gyro_sum.y  += int16_val(data, 3);
+//        _gyro_sum.z  -= int16_val(data, 5);
+        
+        _accel_sum.x += int16_val(data, 0);
+        _accel_sum.y += int16_val(data, 1);
+        _accel_sum.z += int16_val(data, 2);
+        _gyro_sum.x  += int16_val(data, 3);
+        _gyro_sum.y  += int16_val(data, 4);
+        _gyro_sum.z  += int16_val(data, 5);
 #endif
         _sum_count++;
+        
+        //hal.console->printf_P(PSTR("accel_sum.x %d, _accel_sum.y %d, _accel_sum.z %d, _gyro_sum.x %d, _gyro_sum.y %d, _gyro_sum.z %d\n"), int16_val(data, 1), int16_val(data, 0), int16_val(data, 2), int16_val(data, 4), int16_val(data, 3), int16_val(data, 5));
+        
+//        hal.console->printf_P(PSTR("accel_sum.x %d, _accel_sum.y %d, _accel_sum.z %d, _gyro_sum.x %d, _gyro_sum.y %d, _gyro_sum.z %d\n"),
+//                int16_val(data, 1),
+//                int16_val(data, 0),
+//                int16_val(data, 2),
+//                int16_val(data, 4),
+//                int16_val(data, 3),
+//                int16_val(data, 5));
 
 #if !MPU6000_FAST_SAMPLING
         if (_sum_count == 0) {
@@ -762,8 +790,8 @@ bool AP_InertialSensor_MPU6000::_hardware_init(void)
 #endif
     hal.scheduler->delay(1);
 
-    //_register_write(MPUREG_GYRO_CONFIG, BITS_GYRO_FS_2000DPS);  // Gyro scale 2000º/s
-    _register_write(MPUREG_GYRO_CONFIG, BITS_GYRO_FS_250DPS);  // Gyro scale 250º/s
+    _register_write(MPUREG_GYRO_CONFIG, BITS_GYRO_FS_2000DPS);  // Gyro scale 2000º/s
+    //_register_write(MPUREG_GYRO_CONFIG, BITS_GYRO_FS_250DPS);  // Gyro scale 250º/s
     hal.scheduler->delay(1);
 
     // read the product ID rev c has 1/2 the sensitivity of rev d

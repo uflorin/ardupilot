@@ -142,7 +142,7 @@ void* Memory_table::get_page(void** const pages, uint32_t addr) const
     if (addr >= PAGE_SIZE * _page_count) {
         return NULL;   
     }
-    return (uint8_t*)pages[(uint32_t) addr / 4096] + addr % 4096;
+    return (uint8_t*)pages[(uint32_t) addr / PAGE_SIZE] + addr % PAGE_SIZE;
 }
 
 //Get virtual address from the corresponding physical address from memory_table.
@@ -465,6 +465,13 @@ void LinuxRCInput_Navio::_timer_tick()
 
     //Now we are getting address in which DMAC is writing at current moment
     dma_cb_t* ad = (dma_cb_t*) con_blocks->get_virt_addr(dma_reg[RCIN_NAVIO_DMA_CONBLK_AD | RCIN_NAVIO_DMA_CHANNEL << 8]);
+    
+    if (ad == NULL)
+    {
+        fprintf(stderr,"Failed to get_virt_addr(dma_reg[RCIN_NAVIO_DMA_CONBLK_AD | RCIN_NAVIO_DMA_CHANNEL << 8])\n");
+        return;
+    }
+    
     for(j = 1; j >= -1; j--){
     x = circle_buffer->get_virt_addr((ad + j)->dst);
     if(x != NULL) {
@@ -482,12 +489,38 @@ void LinuxRCInput_Navio::_timer_tick()
     for (;counter > 0x40;counter--) {
         //Is it timer samle?
         if (curr_pointer %  (64) == 0) {
-            curr_tick = *((uint64_t*) circle_buffer->get_page(circle_buffer->_virt_pages, curr_pointer));
+            uint64_t* page64 = (uint64_t*) circle_buffer->get_page(circle_buffer->_virt_pages, curr_pointer);
+            
+            if (page64 == NULL)
+            {
+                fprintf(stderr,"Failed to get_page(circle_buffer->_virt_pages, curr_pointer)\n");
+                hal.scheduler->panic(PSTR("Failed to get_page(circle_buffer->_virt_pages, curr_pointer)"));
+                return;
+            }
+            
+            curr_tick = *(page64);
             curr_pointer+=8;
             counter-=8;
         }
         //Reading required bit
-        curr_signal = *((uint8_t*) circle_buffer->get_page(circle_buffer->_virt_pages, curr_pointer)) & 0x10 ? 1 : 0;
+        uint8_t* page8 = (uint8_t*) circle_buffer->get_page(circle_buffer->_virt_pages, curr_pointer);
+        
+        if (page8 == NULL)
+        {
+            fprintf(stderr,"Failed to get_page(circle_buffer->_virt_pages, curr_pointer)\n");
+            hal.scheduler->panic(PSTR("Failed to get_page(circle_buffer->_virt_pages, curr_pointer)"));
+            return;
+        }
+        
+//        try
+//        {
+        curr_signal = *(page8) & 0x10 ? 1 : 0;
+//        }
+//        catch (std::exception& e)
+//        {
+//            std::cerr << "Exception catched: " << e.waht() << std.endl;
+//        }
+        //hal.console->printf("exit page8 0x%x\n", page8);
         //If the signal changed
         if (curr_signal != last_signal) {
             delta_time = curr_tick - prev_tick;
